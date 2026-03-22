@@ -29,7 +29,7 @@ All five fetchers run in parallel. The orchestrator collects results, sends them
 ### 1. Clone and install
 
 ```bash
-git clone https://github.com/yourusername/daily-digest-trigger.git
+git clone https://github.com/hholen/daily-digest-trigger.git
 cd daily-digest-trigger
 npm install
 ```
@@ -142,6 +142,79 @@ Fetches subreddit content via Reddit's Atom RSS feed. For subreddits with `fetch
 The Claude analysis prompt is built dynamically from your config. Change `persona` and `themes` in `digest.config.ts` to completely reshape what gets highlighted.
 
 The analysis task lives in `src/trigger/daily-digest/analyse-digest.ts` if you want to customise the prompt further — for example, changing the number of headline items or adjusting the content idea format.
+
+## Adding a new source type
+
+The pipeline is designed to be extended. Each fetcher is a standalone Trigger.dev task that returns `CollectedItem[]` — add a new one in three steps:
+
+### 1. Create the fetcher task
+
+Add a new file in `src/trigger/daily-digest/`, e.g. `fetch-twitter.ts`:
+
+```typescript
+import { task, logger } from "@trigger.dev/sdk";
+import { digestConfig } from "../../config/digest.config.js";
+import type { CollectedItem } from "./types.js";
+
+export const fetchTwitter = task({
+  id: "fetch-twitter",
+  retry: { maxAttempts: 2 },
+  run: async (): Promise<CollectedItem[]> => {
+    const items: CollectedItem[] = [];
+
+    // Your fetching logic here — hit an API, scrape RSS, etc.
+    // Filter to last 24h, extract what matters
+
+    for (const post of fetchedPosts) {
+      items.push({
+        title: post.text.slice(0, 100),
+        url: post.url,
+        snippet: post.text,
+        source: "twitter",
+        sourceType: "news",          // determines snippet length in analysis
+        publishedAt: post.createdAt,
+        meta: undefined,             // optional — community context, comments, etc.
+      });
+    }
+
+    logger.info(`Twitter: collected ${items.length} items`);
+    return items;
+  },
+});
+```
+
+The key contract is the return type: `CollectedItem[]`. As long as your fetcher returns that, the rest of the pipeline (analysis, posting) works automatically.
+
+The `sourceType` field affects how much of the snippet Claude sees: `"youtube"` and `"news"` get 1500 chars, everything else gets 500. The optional `meta` field passes through extra context (like HN comments or Reddit TL;DRs) that Claude uses to inform its analysis.
+
+### 2. Wire it into the orchestrator
+
+In `run-daily-digest.ts`, import your fetcher and add it to the fan-out:
+
+```typescript
+import { fetchTwitter } from "./fetch-twitter.js";
+
+// In the run function, add:
+if (digestConfig.sources.twitter?.enabled) {
+  fetchers.push({ id: "twitter", task: fetchTwitter });
+}
+```
+
+### 3. Add config (optional)
+
+If your source needs user configuration, add it to `digest.config.ts`:
+
+```typescript
+sources: {
+  // ... existing sources
+  twitter: {
+    enabled: true,
+    accounts: ["@kaboradev", "@triggerdotdev"],
+  },
+},
+```
+
+That's it. The analysis and Slack posting tasks don't need any changes — they work with whatever `CollectedItem[]` array they receive.
 
 ## Known pitfalls
 
