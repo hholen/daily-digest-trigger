@@ -1,0 +1,19 @@
+{
+  "name": "daily-digest-trigger",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "npx trigger.dev dev",
+    "deploy": "npx trigger.dev deploy"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.39.0",
+    "@trigger.dev/sdk": "^4.0.0",
+    "fast-xml-parser": "^4.5.1"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.0",
+    "@types/node": "^22.0.0"
+  }
+}
