@@ -2,7 +2,7 @@
 
 A [Trigger.dev](https://trigger.dev) pipeline that collects content from across the web, uses Claude to filter and analyse it, and posts a themed daily digest to Slack.
 
-Every morning you get a Slack message with the most interesting items from Hacker News, YouTube, newsletters, blogs, and Reddit — grouped by theme, with headlines, quick hits, and content ideas.
+Every morning you get a Slack message with the most interesting items from Hacker News, YouTube, Twitter/X, newsletters, blogs, and Reddit — grouped by theme, with headlines, quick hits, and content ideas.
 
 ## How it works
 
@@ -13,7 +13,8 @@ Schedule (cron)
     ├── fetch-youtube        (YouTube Data API + Supadata transcripts)
     ├── fetch-newsletters    (RSS feeds)
     ├── fetch-blogs          (RSS/Atom feeds)
-    └── fetch-reddit         (Atom feeds + mod-bot TL;DRs)
+    ├── fetch-reddit         (Atom feeds + mod-bot TL;DRs)
+    └── fetch-twitter        (Feedly + xcancel.com, no API key needed)
           │
           ▼
     analyse-digest           (Claude Sonnet — filter, theme, generate ideas)
@@ -22,7 +23,7 @@ Schedule (cron)
     post-digest              (Slack webhook with Block Kit formatting)
 ```
 
-All five fetchers run in parallel. The orchestrator collects results, sends them to Claude for analysis, and posts the output to Slack.
+All six fetchers run in parallel. The orchestrator collects results, sends them to Claude for analysis, and posts the output to Slack.
 
 ## Quick start
 
@@ -117,6 +118,9 @@ Parses RSS feeds (most Substack/Ghost newsletters expose one at `/feed`). Filter
 
 ### Blogs
 Supports both RSS and Atom feeds (set `format: "atom"` in the config). Same 24-hour filtering.
+
+### Twitter/X
+Fetches tweets from configured accounts using [Feedly's public API](https://cloud.feedly.com) as a proxy for [xcancel.com](https://xcancel.com) RSS feeds. No API key needed. Retweets are filtered out to reduce noise. Just add Twitter handles to the config.
 
 ### Reddit
 Fetches subreddit content via Reddit's Atom RSS feed. For subreddits with `fetchCommentSummary: true`, also fetches the post's JSON comments looking for stickied mod-bot TL;DR summaries — these are high-signal community summaries that appear after 200+ comments.

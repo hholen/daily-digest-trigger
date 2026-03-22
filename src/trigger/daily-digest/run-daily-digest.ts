@@ -5,6 +5,7 @@ import { fetchYoutube } from "./fetch-youtube.js";
 import { fetchNewsletters } from "./fetch-newsletters.js";
 import { fetchBlogs } from "./fetch-blogs.js";
 import { fetchReddit } from "./fetch-reddit.js";
+import { fetchTwitter } from "./fetch-twitter.js";
 import { analyseDigest } from "./analyse-digest.js";
 import { postDigest } from "./post-digest.js";
 import type { CollectedItem } from "./types.js";
@@ -32,6 +33,9 @@ export const runDailyDigest = schedules.task({
     }
     if (digestConfig.sources.reddit.enabled && digestConfig.sources.reddit.subreddits.length > 0) {
       fetchers.push({ id: "reddit", task: fetchReddit });
+    }
+    if (digestConfig.sources.twitter.enabled && digestConfig.sources.twitter.accounts.length > 0) {
+      fetchers.push({ id: "twitter", task: fetchTwitter });
     }
 
     if (fetchers.length === 0) {
