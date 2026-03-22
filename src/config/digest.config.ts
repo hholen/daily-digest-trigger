@@ -113,23 +113,16 @@ export const digestConfig = {
      * Twitter/X accounts — fetches via Feedly + xcancel.com proxy.
      * No API key needed. Works with any public account.
      */
+    /**
+     * Twitter/X accounts — fetches via Feedly + xcancel.com proxy.
+     * No API key needed. Works with any public account.
+     * Just use their handle without the @ symbol.
+     */
     twitter: {
       enabled: true,
       accounts: [
-        // AI companies
-        { name: "Anthropic", handle: "AnthropicAI" },
-        { name: "OpenAI", handle: "OpenAI" },
-        { name: "Google DeepMind", handle: "GoogleDeepMind" },
-        { name: "Mistral AI", handle: "MistralAI" },
-        // People
-        { name: "Sam Altman", handle: "sama" },
-        { name: "Dario Amodei", handle: "DarioAmodei" },
-        { name: "Boris Cherny", handle: "bcherny" },
-        { name: "Greg Isenberg", handle: "gregisenberg" },
-        { name: "Andrej Karpathy", handle: "karpathy" },
-        { name: "Paul Graham", handle: "paulg" },
-        { name: "Pieter Levels", handle: "levelsio" },
-        { name: "Shawn Wang", handle: "swyx" },
+        // { name: "Anthropic", handle: "AnthropicAI" },
+        // { name: "Sam Altman", handle: "sama" },
       ],
     },
   },
