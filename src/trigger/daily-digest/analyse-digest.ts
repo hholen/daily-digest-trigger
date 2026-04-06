@@ -93,8 +93,15 @@ export const analyseDigest = task({
       throw new Error("No text in Claude response");
     }
 
+    // Strip markdown fences if Claude wrapped the JSON
+    let jsonText = textBlock.text.trim();
+    const fenceMatch = jsonText.match(/^```(?:json)?\s*\n?([\s\S]*?)\n?\s*```$/);
+    if (fenceMatch) {
+      jsonText = fenceMatch[1].trim();
+    }
+
     try {
-      const output = JSON.parse(textBlock.text) as DigestOutput;
+      const output = JSON.parse(jsonText) as DigestOutput;
       const totalItems = output.themes.reduce(
         (sum, t) => sum + t.news.length + t.insights.length + t.actions.length,
         0
@@ -105,7 +112,7 @@ export const analyseDigest = task({
       return output;
     } catch (error) {
       logger.error(`Failed to parse Claude response as JSON: ${error}`);
-      logger.error(`Raw response: ${textBlock.text.slice(0, 500)}`);
+      logger.error(`Raw response: ${jsonText.slice(0, 500)}`);
       throw new Error("Claude returned invalid JSON");
     }
   },

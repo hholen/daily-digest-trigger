@@ -45,16 +45,16 @@ export const runDailyDigest = schedules.task({
 
     logger.info(`Running ${fetchers.length} fetchers`);
 
-    // Fan out — trigger all fetchers in parallel
-    const results = await batch.triggerAndWait<typeof fetchHackerNews>(
-      fetchers.map((f) => ({ id: f.task.id, payload: {} }))
+    // Fan out — trigger all fetchers in parallel (triggerByTaskAndWait preserves output types)
+    const results = await batch.triggerByTaskAndWait(
+      fetchers.map((f) => ({ task: f.task, payload: {} }))
     );
 
     // Collect all items
     const allItems: CollectedItem[] = [];
     for (const result of results.runs) {
       if (result.ok) {
-        allItems.push(...(result.output as CollectedItem[]));
+        allItems.push(...result.output);
       } else {
         logger.warn(`Fetcher failed: ${result.taskIdentifier}`);
       }
