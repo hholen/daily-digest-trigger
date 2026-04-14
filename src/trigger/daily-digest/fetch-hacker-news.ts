@@ -69,9 +69,10 @@ async function fetchHNComments(objectID: string): Promise<string> {
 
     if (comments.length === 0) return "";
 
+    // Cap total at ~800 chars to keep analyser input dense
     let result = "";
     for (const comment of comments) {
-      if (result.length + comment.length > 2000) break;
+      if (result.length + comment.length > 800) break;
       result += comment + "\n";
     }
 
@@ -102,8 +103,13 @@ export const fetchHackerNews = task({
       "i"
     );
 
-    const relevant = data.hits.filter((hit) => keywordRegex.test(hit.title));
-    logger.info(`HN: ${relevant.length} relevant stories out of ${data.hits.length}`);
+    const MIN_POINTS = 20;
+    const relevant = data.hits.filter(
+      (hit) => keywordRegex.test(hit.title) && hit.points >= MIN_POINTS
+    );
+    logger.info(
+      `HN: ${relevant.length} relevant stories out of ${data.hits.length} (min ${MIN_POINTS} pts)`
+    );
 
     const sorted = relevant.sort((a, b) => b.points - a.points);
 

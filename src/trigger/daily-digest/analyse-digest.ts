@@ -32,21 +32,75 @@ Rules:
 - Some items have a "meta" field with community discussion (HN comments, Reddit TL;DRs from 200+ comment threads). These represent high-signal community sentiment — use them to inform your analysis and surface the most discussed topics.
 - YouTube items include transcript excerpts — use these to understand what was actually discussed, not just the title.
 
-Respond with valid JSON matching this schema:
-{
-  "themes": [
-    {
-      "name": "${digestConfig.themes[0]}" | "${digestConfig.themes[1]}" | "${digestConfig.themes[2] ?? ""}",
-      "news": [{ "text": "...", "url": "...", "headline": true/false }],
-      "insights": [{ "text": "...", "url": "...", "headline": true/false }],
-      "actions": [{ "text": "...", "url": "...", "headline": true/false }]
-    }
-  ],
-  "quickHits": [{ "text": "...", "url": "..." }],
-  "contentIdeas": [{ "hook": "...", "angle": "...", "platform": "${digestConfig.contentPlatforms.join('" | "')}", "sourceUrls": ["url1", "url2"] }]
+Call the submit_digest tool with your analysis.`;
 }
 
-IMPORTANT: Respond with ONLY the JSON object. No markdown fences, no commentary.`;
+const digestItemSchema = {
+  type: "object",
+  required: ["text", "url", "headline"],
+  properties: {
+    text: { type: "string" },
+    url: { type: "string" },
+    headline: { type: "boolean" },
+  },
+} as const;
+
+/**
+ * Build the analyser tool schema from digestConfig. Theme names and platform
+ * values come from user config so the enum is dynamic per-deployment.
+ */
+function buildDigestTool(): Anthropic.Tool {
+  return {
+    name: "submit_digest",
+    description:
+      "Submit the analysed daily digest grouped by theme with quick hits and content ideas.",
+    input_schema: {
+      type: "object",
+      required: ["themes", "quickHits", "contentIdeas"],
+      properties: {
+        themes: {
+          type: "array",
+          items: {
+            type: "object",
+            required: ["name", "news", "insights", "actions"],
+            properties: {
+              name: { type: "string", enum: [...digestConfig.themes] },
+              news: { type: "array", items: digestItemSchema },
+              insights: { type: "array", items: digestItemSchema },
+              actions: { type: "array", items: digestItemSchema },
+            },
+          },
+        },
+        quickHits: {
+          type: "array",
+          items: {
+            type: "object",
+            required: ["text", "url"],
+            properties: {
+              text: { type: "string" },
+              url: { type: "string" },
+            },
+          },
+        },
+        contentIdeas: {
+          type: "array",
+          items: {
+            type: "object",
+            required: ["hook", "angle", "platform", "sourceUrls"],
+            properties: {
+              hook: { type: "string" },
+              angle: { type: "string" },
+              platform: {
+                type: "string",
+                enum: [...digestConfig.contentPlatforms],
+              },
+              sourceUrls: { type: "array", items: { type: "string" } },
+            },
+          },
+        },
+      },
+    },
+  };
 }
 
 export const analyseDigest = task({
@@ -77,9 +131,13 @@ export const analyseDigest = task({
       0
     );
 
+    const tool = buildDigestTool();
+
     const message = await anthropic.messages.create({
       model: "claude-sonnet-4-6",
-      max_tokens: 4096,
+      max_tokens: 8192,
+      tools: [tool],
+      tool_choice: { type: "tool", name: tool.name },
       messages: [
         {
           role: "user",
@@ -88,32 +146,29 @@ export const analyseDigest = task({
       ],
     });
 
-    const textBlock = message.content.find((block) => block.type === "text");
-    if (!textBlock?.text) {
-      throw new Error("No text in Claude response");
+    const toolUse = message.content.find((block) => block.type === "tool_use");
+    if (!toolUse || toolUse.type !== "tool_use") {
+      logger.error(
+        `No tool_use block in response. stop_reason=${message.stop_reason} usage=${JSON.stringify(message.usage)}`
+      );
+      throw new Error("Claude did not invoke submit_digest tool");
     }
 
-    // Strip markdown fences if Claude wrapped the JSON
-    let jsonText = textBlock.text.trim();
-    const fenceMatch = jsonText.match(/^```(?:json)?\s*\n?([\s\S]*?)\n?\s*```$/);
-    if (fenceMatch) {
-      jsonText = fenceMatch[1].trim();
+    if (message.stop_reason === "max_tokens") {
+      logger.error(
+        `Response truncated at max_tokens. usage=${JSON.stringify(message.usage)} — bump max_tokens or trim input.`
+      );
+      throw new Error("Claude response truncated at max_tokens");
     }
 
-    try {
-      const output = JSON.parse(jsonText) as DigestOutput;
-      const totalItems = output.themes.reduce(
-        (sum, t) => sum + t.news.length + t.insights.length + t.actions.length,
-        0
-      );
-      logger.info(
-        `Analysis complete: ${totalItems} themed items, ${output.quickHits.length} quick hits, ${output.contentIdeas.length} content ideas`
-      );
-      return output;
-    } catch (error) {
-      logger.error(`Failed to parse Claude response as JSON: ${error}`);
-      logger.error(`Raw response: ${jsonText.slice(0, 500)}`);
-      throw new Error("Claude returned invalid JSON");
-    }
+    const output = toolUse.input as DigestOutput;
+    const totalItems = output.themes.reduce(
+      (sum, t) => sum + t.news.length + t.insights.length + t.actions.length,
+      0
+    );
+    logger.info(
+      `Analysis complete: ${totalItems} themed items, ${output.quickHits.length} quick hits, ${output.contentIdeas.length} content ideas`
+    );
+    return output;
   },
 });

@@ -112,6 +112,27 @@ export const fetchReddit = task({
           const url = getAtomLink(entry.link);
           const content = textOf(entry.content);
 
+          const decoded = content
+            .replace(/<[^>]*>/g, " ")
+            .replace(/&#32;/g, " ")
+            .replace(/&#39;/g, "'")
+            .replace(/&quot;/g, '"')
+            .replace(/&amp;/g, "&")
+            .replace(/&lt;/g, "<")
+            .replace(/&gt;/g, ">")
+            .replace(/&[a-z]+;/gi, " ")
+            .replace(/\s+/g, " ")
+            .trim();
+
+          // Reddit RSS wraps empty text-posts with a "submitted by /u/X [link] [comments]"
+          // boilerplate that has zero signal. Skip posts with nothing substantive beyond that.
+          const substantive = decoded
+            .replace(/submitted by\s+\/u\/\S+\s*\[link\]\s*\[comments\]/i, "")
+            .trim();
+          if (substantive.length < 30) {
+            continue;
+          }
+
           let meta: string | undefined;
           if (sub.fetchCommentSummary) {
             const tldr = await fetchTldr(url);
@@ -124,12 +145,7 @@ export const fetchReddit = task({
           items.push({
             title,
             url,
-            snippet: content
-              .replace(/<[^>]*>/g, " ")
-              .replace(/&[a-z]+;/gi, " ")
-              .replace(/\s+/g, " ")
-              .trim()
-              .slice(0, 500),
+            snippet: decoded.slice(0, 500),
             source: sub.name,
             sourceType: "reddit",
             publishedAt: dateStr ?? new Date().toISOString(),

@@ -61,7 +61,7 @@ export const digestConfig = {
       channels: [
         // { name: "Y Combinator", channelId: "UCcefcZRL2oaA_uBNeo5UOWg" },
         // { name: "Fireship", channelId: "UCsBjURrPoezykLs9EqgamOA" },
-      ],
+      ] as Array<{ name: string; channelId: string }>,
     },
 
     /**
@@ -73,7 +73,7 @@ export const digestConfig = {
       feeds: [
         // { name: "Lenny's Newsletter", feedUrl: "https://www.lennysnewsletter.com/feed" },
         // { name: "TLDR", feedUrl: "https://tldr.tech/rss" },
-      ],
+      ] as Array<{ name: string; feedUrl: string }>,
     },
 
     /**
@@ -123,7 +123,7 @@ export const digestConfig = {
       accounts: [
         // { name: "Anthropic", handle: "AnthropicAI" },
         // { name: "Sam Altman", handle: "sama" },
-      ],
+      ] as Array<{ name: string; handle: string }>,
     },
   },
 };

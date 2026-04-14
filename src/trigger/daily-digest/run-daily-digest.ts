@@ -16,8 +16,16 @@ export const runDailyDigest = schedules.task({
   run: async () => {
     logger.info("Starting daily digest");
 
-    // Build list of enabled fetchers
-    const fetchers: Array<{ id: string; task: typeof fetchHackerNews }> = [];
+    // Build list of enabled fetchers. Using a union task type so the array can hold
+    // any of the fetchers — they all share the void→CollectedItem[] signature.
+    type Fetcher =
+      | typeof fetchHackerNews
+      | typeof fetchYoutube
+      | typeof fetchNewsletters
+      | typeof fetchBlogs
+      | typeof fetchReddit
+      | typeof fetchTwitter;
+    const fetchers: Array<{ id: string; task: Fetcher }> = [];
 
     if (digestConfig.sources.hackerNews.enabled) {
       fetchers.push({ id: "hn", task: fetchHackerNews });
@@ -47,7 +55,7 @@ export const runDailyDigest = schedules.task({
 
     // Fan out — trigger all fetchers in parallel (triggerByTaskAndWait preserves output types)
     const results = await batch.triggerByTaskAndWait(
-      fetchers.map((f) => ({ task: f.task, payload: {} }))
+      fetchers.map((f) => ({ task: f.task, payload: undefined as void }))
     );
 
     // Collect all items

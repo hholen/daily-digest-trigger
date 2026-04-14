@@ -37,15 +37,19 @@ export const fetchTwitter = task({
         }
 
         const data = (await response.json()) as FeedlyStream;
+        const MAX_PER_ACCOUNT = 5;
+        const MIN_SNIPPET_CHARS = 60;
         let count = 0;
 
         for (const item of data.items) {
+          if (count >= MAX_PER_ACCOUNT) break;
+
           const published = item.published ?? 0;
           if (published < oneDayAgo) continue;
 
-          // Skip retweets for less noise (they start with "RT by @handle:")
           const title = item.title ?? "";
-          if (title.startsWith("RT by @")) continue;
+          // Skip retweets and reply-chain tweets — both are noise when one account is bursty
+          if (title.startsWith("RT by @") || title.startsWith("R to @")) continue;
 
           const tweetUrl =
             item.alternate?.[0]?.href ??
@@ -56,6 +60,8 @@ export const fetchTwitter = task({
             .replace(/<[^>]*>/g, " ")
             .replace(/\s+/g, " ")
             .trim();
+
+          if (snippet.length < MIN_SNIPPET_CHARS) continue;
 
           items.push({
             title: title.length > 140 ? title.slice(0, 140) + "..." : title,
@@ -68,7 +74,7 @@ export const fetchTwitter = task({
           count++;
         }
 
-        logger.info(`@${account.handle}: ${count} tweets in last 24h`);
+        logger.info(`@${account.handle}: ${count} tweets kept (cap ${MAX_PER_ACCOUNT})`);
       } catch (error) {
         logger.warn(`Error fetching @${account.handle}: ${error}`);
       }

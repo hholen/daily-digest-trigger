@@ -4,12 +4,12 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "npx trigger.dev dev",
-    "deploy": "npx trigger.dev deploy"
+    "dev": "npx trigger.dev@4.4.4 dev",
+    "deploy": "npx trigger.dev@4.4.4 deploy"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.39.0",
-    "@trigger.dev/sdk": "^4.0.0",
+    "@trigger.dev/sdk": "4.4.4",
     "fast-xml-parser": "^4.5.1"
   },
   "devDependencies": {
